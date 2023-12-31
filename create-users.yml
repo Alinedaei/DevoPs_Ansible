@@ -1,0 +1,31 @@
+---
+- name: Create User and Add sudo Access
+  hosts: localhost
+  become: yes
+  vars_prompt:
+    - name: username
+      prompt: "Enter username"
+      private: no  # To show the input
+    - name: password
+      prompt: "Enter password"
+      private: yes  # To hide the input
+
+  tasks:
+    - name: Create User
+      user:
+        name: "{{ username }}"
+        password: "{{ password | password_hash('sha512') }}"
+        groups: "sudo"
+      notify: DisplayUserDetails
+
+    - name: Add sudo access for the user
+      lineinfile:
+        dest: /etc/sudoers
+        line: "{{ username }} ALL=(ALL) NOPASSWD:ALL"
+        validate: 'visudo -cf %s'
+
+  handlers:
+    - name: DisplayUserDetails
+      debug:
+        msg: "User '{{ username }}' has been created with sudo access and the provided password."
+

@@ -1,0 +1,12 @@
+- hosts: rProxy1
+  tasks:
+     - name: Copy script to server
+       copy:
+         src: /root/certificate/updateCertificate.sh
+         dest: /srv/certificate/updateCertificate.sh
+         mode: 0777
+
+     - name: Execute script on server
+       shell: /srv/certificate/updateCertificate.sh
+    
+

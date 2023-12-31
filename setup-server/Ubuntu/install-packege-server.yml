@@ -1,0 +1,147 @@
+---
+- name: Set up users and network configuration (Debian)
+  hosts: all
+  become: yes
+  tasks:
+    - name: Create users
+      user:
+        name: "{{ item.name }}"
+        groups: "sudo"
+        password: "{{ item.password | password_hash('sha512') }}"
+      with_items:
+        - { name: 'infraadmin', password: 'password_infraadmin' }
+        - { name: 'devadmin', password: 'password_devadmin' }
+        - { name: 'softadmin', password: 'password_softadmin' }
+
+    - name: Disable IPv6 (Debian)
+      lineinfile:
+        path: /etc/sysctl.conf
+        line: "{{ item }}"
+      with_items:
+        - "net.ipv6.conf.all.disable_ipv6 = 1"
+        - "net.ipv6.conf.default.disable_ipv6 = 1"
+
+          #  - name: Update DNS and restart network (Debian)
+          # lineinfile:
+          #     path: /etc/network/interfaces
+          # line: "{{ item }}"
+          # with_items:
+          # - "dns-nameservers 172.20.21.5 172.20.21.7"
+          # - "dns-search gbgnetwork.net"
+          # notify: Restart Network
+
+          #  handlers:
+          # - name: Restart Network
+          #  command: "{{ item }}"
+          # with_items:
+          #     - "ifdown ens160 && ifup ens160"
+          # - "/etc/init.d/network restart"
+          # - "systemctl restart network"
+
+- name: Update and install packages
+  hosts: all
+  become: yes
+  vars:
+    package_list:
+      - ntp
+      - htop
+      - telnet
+      - wget
+      - vim
+      - net-tools
+      - zip
+      - unzip
+      - gzip
+      - snmp
+      - snmpd
+      - open-vm-tools
+      - ntpdate
+      - ntp-doc
+      - git
+      - rsync
+      - nano
+  tasks:
+    - name: Update and install packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+        update_cache: yes
+      with_items: "{{ package_list }}"
+      notify: Configure Packages
+
+  handlers:
+    - name: Configure Packages
+      import_tasks: /root/Ubuntu/configure_packages.yml
+
+
+
+- name: Configure SNMP (Debian)
+  hosts: all
+  become: yes
+  tasks:
+    - name: Backup SNMP configuration
+      command: cp /etc/snmp/snmpd.conf /etc/snmp/snmpd.conf.orig
+
+    - name: Update SNMP configuration
+      copy:
+        content: |
+          com2sec local localhost gol444mon
+          com2sec localnet 172.30.41.39 gol444mon
+          com2sec localnet solarmain.gbgnetwork.net gol444mon
+          com2sec localnet 172.30.32.170 gol444mon
+          com2sec localnet solarwinds.gbgnetwork.net gol444mon
+          group MyROGroup v2c local
+          group MyROGroup v2c localnet
+          view all included .1
+          access MyROGroup "" any noauth exact all none none
+        dest: /etc/snmp/snmpd.conf
+      notify: Restart SNMP
+
+  handlers:
+    - name: Restart SNMP
+      service:
+        name: snmpd
+        state: restarted
+
+
+
+- name: Configure NTP (Debian)
+  hosts: all
+  become: yes
+  tasks:
+    - name: Backup NTP configuration
+      command: cp /etc/ntp.conf /etc/ntp.conf.orig
+
+    - name: Update NTP configuration
+      copy:
+        content: |
+          server ntp1.gbgnetwork.net
+          server ntp2.gbgnetwork.net
+          server 172.20.33.1
+          server 172.20.33.2
+        dest: /etc/ntp.conf
+      notify: Restart NTP
+
+  handlers:
+    - name: Restart NTP
+      service:
+        name: ntp
+        state: restarted
+
+
+- name: Set timezone (Debian)
+  hosts: all
+  become: yes
+  tasks:
+    - name: Set timezone
+      file:
+        path: /etc/localtime
+        src: /usr/share/zoneinfo/Asia/Tehran
+        state: link
+      notify: Set Local Timezone
+
+  handlers:
+    - name: Set Local Timezone
+      command: date
+
+

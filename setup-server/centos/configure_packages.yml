@@ -1,0 +1,11 @@
+---
+- name: Set debconf selections for packages
+  debconf:
+    name: "{{ item.name }}"
+    question: "{{ item.question }}"
+    vtype: "{{ item.vtype }}"
+    value: "{{ item.value }}"
+  with_items:
+    - { name: "ntp", question: "ntp/old_config_warning", vtype: "boolean", value: "true" }
+     
+

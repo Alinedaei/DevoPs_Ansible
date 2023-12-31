@@ -1,0 +1,108 @@
+---
+- name: Set up users and network configuration (CentOS)
+  hosts: all
+  become: yes
+  tasks:
+    - name: Create users
+      user:
+        name: "{{ item.name }}"
+        groups: "wheel"
+        password: "{{ item.password | password_hash('sha512') }}"
+      with_items:
+        - { name: 'infraadmin', password: 'password_infraadmin' }
+        - { name: 'devadmin', password: 'password_devadmin' }
+        - { name: 'softadmin', password: 'password_softadmin' }
+
+    - name: Disable IPv6 (CentOS)
+      sysctl:
+        name: "{{ item }}"
+        value: 1
+        state: present
+        reload: yes
+      with_items:
+        - "net.ipv6.conf.all.disable_ipv6"
+        - "net.ipv6.conf.default.disable_ipv6"
+
+- name: Update and install packages
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update and install packages
+      yum:
+        name:
+          - ntp
+          - htop
+          - telnet
+          - wget
+          - vim
+          - net-tools
+          - zip
+          - unzip
+          - gzip
+          - net-snmp
+          - git
+          - rsync
+          - nano
+        state: latest
+      register: result
+
+    - name: Pause for confirmation
+      pause:
+        prompt: "Packages installed successfully. Do you want to continue? (yes/no)"
+      when: result.changed
+
+ 
+
+
+  handlers:
+    - name: Configure Packages
+      import_tasks: /root/centos/configure_packages.yml
+
+
+      notify: Configure Packages
+
+    - name: Configure SNMP (CentOS)
+      copy:
+        content: |
+          com2sec local localhost gol444mon
+          com2sec localnet 172.30.41.39 gol444mon
+          com2sec localnet solarmain.gbgnetwork.net gol444mon
+          com2sec localnet 172.30.32.170 gol444mon
+          com2sec localnet solarwinds.gbgnetwork.net gol444mon
+          group MyROGroup v2c local
+          group MyROGroup v2c localnet
+          view all included .1
+          access MyROGroup "" any noauth exact all none none
+        dest: /etc/snmp/snmpd.conf
+      notify: Restart SNMP
+
+    - name: Configure NTP (CentOS)
+      copy:
+        content: |
+          server ntp1.gbgnetwork.net
+          server ntp2.gbgnetwork.net
+          server 172.20.33.1
+          server 172.20.33.2
+        dest: /etc/ntp.conf
+      notify: Restart NTP
+
+    - name: Set timezone (CentOS)
+      file:
+        path: /etc/localtime
+        src: /usr/share/zoneinfo/Asia/Tehran
+        state: link
+      notify: Set Local Timezone
+
+    - name: Restart SNMP
+      service:
+        name: snmpd
+        state: restarted
+
+    - name: Restart NTP
+      service:
+        name: ntpd
+        state: restarted
+
+    - name: Set Local Timezone
+      command: date
+
