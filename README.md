@@ -2,7 +2,7 @@
 1-The script executed on certbot-certificates is dumped in the log file
 2-The initial script is executed, then it goes to the specified date or domain, is read from the inside, and updates the Har domain based on the date.
 3-Go through the following steps:
-  #git clone http://azuredevops/Devops/DevoPs_Ansible/_git/DevoPs_Ansible
+  #git clone 
   #cd DevoPs_Ansible/certificate
   #ansible-playbook updateCertificate.yml
 
