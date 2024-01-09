@@ -5,7 +5,8 @@
 2-The initial script is executed, then it goes to the specified date or domain, is read from the inside, and updates the Har domain based on the date.
 
 3-Go through the following steps:
-  #git clone 
+
+  #git clone https://github.com/Alinedaei/DevoPs_Ansible.git
   
   #cd DevoPs_Ansible/certificate
   
